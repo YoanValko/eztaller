@@ -1,0 +1,35 @@
+# .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.idl
+*.ilk
+*.met
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.log
+DotVisualizer.xml
+.vs/
+
+# Publish output
+publish/
+*.nupkg
+*.snupkg
+
+# OS
+Thumbs.db
+.DS_Store
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local config
+apps.local.json
+*.userprefs
