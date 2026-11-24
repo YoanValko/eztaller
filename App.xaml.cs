@@ -16,8 +16,8 @@ public partial class WingetApp : Application
         if (!IsRunningAsAdmin())
         {
             MessageBox.Show(
-                "This program needs administrator rights to install applications and restart the PC. " +
-                "Please re-launch it as administrator.",
+                "Eztaller needs administrator rights to install applications and restart the PC. " +
+                "Please right-click Eztaller.exe and choose Run as administrator.",
                 "Administrator rights required",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             Current.Shutdown();
@@ -81,7 +81,7 @@ public partial class WingetApp : Application
             if (json == null)
             {
                 var assembly = Assembly.GetExecutingAssembly();
-                var resourceName = "WingetInstaller.apps.json";
+                var resourceName = "Eztaller.apps.json";
                 using var stream = assembly.GetManifestResourceStream(resourceName);
                 if (stream == null) return null;
                 using var reader = new StreamReader(stream);
