@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>Eztaller</AssemblyName>
+    <RootNamespace>AppInstaller</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="app.manifest" />
+    <None Include="apps.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
