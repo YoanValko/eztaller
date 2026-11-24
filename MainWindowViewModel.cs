@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace AppInstaller;
 
@@ -22,7 +23,12 @@ public sealed class AppViewModel : INotifyPropertyChanged
     public bool IsInstalling
     {
         get => _isInstalling;
-        set { _isInstalling = value; OnPropertyChanged(); }
+        set { _isInstalling = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(StatusIcon)); }
+    }
+    public InstallStatus Status
+    {
+        get => _status;
+        set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(StatusText)); OnPropertyChanged(nameof(StatusIcon)); }
     }
     public string StatusText
     {
@@ -30,8 +36,27 @@ public sealed class AppViewModel : INotifyPropertyChanged
         set { _statusText = value; OnPropertyChanged(); }
     }
 
+    public Brush StatusColor => _status switch
+    {
+        InstallStatus.Pending or InstallStatus.Downloading or InstallStatus.Verifying or InstallStatus.Installing => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF007ACC")),
+        InstallStatus.Completed => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF107C10")),
+        InstallStatus.Failed => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFC42B1C")),
+        InstallStatus.Skipped => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF808080")),
+        InstallStatus.NeedsUserInput => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFFFA500")),
+        _ => new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF666666"))
+    };
+
+    public string StatusIcon => _status switch
+    {
+        InstallStatus.Completed => "\u2713",
+        InstallStatus.Failed => "\u2717",
+        InstallStatus.NeedsUserInput => "\u26A0",
+        _ => string.Empty
+    };
+
     private bool _isSelected;
     private bool _isInstalling;
+    private InstallStatus _status = InstallStatus.Pending;
     private string _statusText = "Waiting";
 
     public AppViewModel(AppEntry entry)
@@ -62,15 +87,60 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set { _statusSummary = value; OnPropertyChanged(); }
     }
     public int SelectedCount => Apps.Count(a => a.IsSelected);
+    public bool AllSelected
+    {
+        get => Apps.Count > 0 && Apps.All(a => a.IsSelected);
+        set
+        {
+            if (value)
+            {
+                foreach (var a in Apps) a.IsSelected = true;
+            }
+            OnPropertyChanged();
+            RefreshSelectionState();
+        }
+    }
+    public bool NoneSelected
+    {
+        get => Apps.Count > 0 && !Apps.Any(a => a.IsSelected);
+        set
+        {
+            if (value)
+            {
+                foreach (var a in Apps) a.IsSelected = false;
+            }
+            OnPropertyChanged();
+            RefreshSelectionState();
+        }
+    }
+    public double OverallProgress
+    {
+        get => _overallProgress;
+        private set { _overallProgress = value; OnPropertyChanged(); }
+    }
+    public string ProgressText
+    {
+        get => _progressText;
+        private set { _progressText = value; OnPropertyChanged(); }
+    }
+    public string CurrentApp
+    {
+        get => _currentApp;
+        private set { _currentApp = value; OnPropertyChanged(); }
+    }
 
     private bool _isBusy;
     private string _statusSummary = "Ready";
+    private double _overallProgress;
+    private string _progressText = "";
+    private string _currentApp = "";
     private RebootManager? _reboot;
 
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand DeselectAllCommand { get; }
     public RelayCommand InstallCommand { get; }
     public RelayCommand CancelRebootCommand { get; }
+    public RelayCommand CloseCommand { get; }
 
     public Action? ShowRebootDialog;
     public Action<int, string>? UpdateRebootCountdown;
@@ -92,6 +162,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         });
         InstallCommand = new RelayCommand(async _ => await InstallAsync(), _ => CanInstall);
         CancelRebootCommand = new RelayCommand(_ => _reboot?.Cancel(), _ => _reboot != null && _reboot.IsCountingDown);
+        CloseCommand = new RelayCommand(_ => CloseWindow?.Invoke(), _ => !IsBusy && _reboot == null);
     }
 
     public void LoadApps(List<AppEntry> entries)
@@ -103,7 +174,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             avm.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(AppViewModel.IsSelected))
+                {
                     RefreshSelectionState();
+                    OnPropertyChanged(nameof(AllSelected));
+                    OnPropertyChanged(nameof(NoneSelected));
+                }
             };
             Apps.Add(avm);
         }
@@ -114,8 +189,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(CanInstall));
         OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(AllSelected));
+        OnPropertyChanged(nameof(NoneSelected));
         InstallCommand?.RaiseCanExecuteChanged();
         CancelRebootCommand?.RaiseCanExecuteChanged();
+        CloseCommand?.RaiseCanExecuteChanged();
     }
 
     private async Task InstallAsync()
@@ -124,28 +202,49 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         StatusSummary = "Starting installation...";
         Log.Clear();
         _reboot = null;
+        OverallProgress = 0;
+        ProgressText = "";
+        CurrentApp = "";
         RefreshSelectionState();
 
         try
         {
             var selected = Apps.Where(a => a.IsSelected).Select(a => a.Entry).ToList();
-            var workingDir = Path.Combine(Path.GetTempPath(), "WingetInstaller", Guid.NewGuid().ToString("N"));
+            var workingDir = Path.Combine(Path.GetTempPath(), "Eztaller", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(workingDir);
 
             var engine = new InstallerEngine();
-            var results = await engine.InstallAllAsync(selected, workingDir, new Progress<string>(msg => LogAdd(msg)), CancellationToken.None);
+            int total = selected.Count;
+            int completed = 0;
+
+            foreach (var app in selected)
+            {
+                var avm = Apps.First(a => a.Entry.Id == app.Id);
+                avm.Status = InstallStatus.Pending;
+                avm.StatusText = "Queued";
+
+                CurrentApp = app.Name;
+                ProgressText = $"Installing {completed + 1} of {total}...";
+                OverallProgress = (double)completed / total * 100;
+
+                var result = await InstallOneAsync(avm, app, workingDir);
+                completed++;
+
+                avm.Status = result.Status;
+                avm.StatusText = result.Message;
+                avm.IsInstalling = false;
+
+                OverallProgress = (double)completed / total * 100;
+                ProgressText = $"Completed {completed} of {total}";
+
+                LogAdd($"[{result.Status}] {app.Name}: {result.Message}");
+            }
 
             LogAdd(string.Empty);
             LogAdd("=== Installation complete ===");
 
-            var failures = results.Where(r => r.Status == InstallStatus.Failed).ToList();
-            var successes = results.Where(r => r.Status == InstallStatus.Completed).ToList();
-
-            foreach (var r in results)
-            {
-                var mark = r.Status == InstallStatus.Completed ? "[OK]" : "[FAIL]";
-                LogAdd($"{mark} {r.App.Name}: {r.Message}");
-            }
+            var failures = Apps.Where(a => a.Status == InstallStatus.Failed).ToList();
+            var successes = Apps.Where(a => a.Status == InstallStatus.Completed).ToList();
 
             StatusSummary = failures.Count == 0
                 ? $"All {successes.Count} app(s) installed successfully."
@@ -153,11 +252,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             if (failures.Count > 0)
             {
-                var failList = string.Join("\n", failures.Select(f => $"- {f.App.Name}: {f.Message}"));
+                var failList = string.Join("\n", failures.Select(f => $"- {f.Entry.Name}: {f.StatusText}"));
                 StatusSummary += $"\n\nFailures:\n{failList}";
             }
 
             ShowSummary?.Invoke();
+
+            CurrentApp = "";
+            ProgressText = "Installation finished.";
 
             LogAdd("Rebooting in 60 seconds. Click Cancel Reboot to abort.");
             ShowRebootDialog?.Invoke();
@@ -195,9 +297,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task<InstallResult> InstallOneAsync(AppViewModel avm, AppEntry app, string workingDir)
+    {
+        avm.IsInstalling = true;
+        avm.Status = InstallStatus.Pending;
+        avm.StatusText = "Starting...";
+
+        var engine = new InstallerEngine();
+        var results = await engine.InstallAllAsync(new List<AppEntry> { app }, workingDir, new Progress<string>(msg => LogAdd(msg)), CancellationToken.None);
+
+        return results.FirstOrDefault() ?? new InstallResult
+        {
+            App = app,
+            Status = InstallStatus.Failed,
+            Message = "No result returned.",
+            Duration = TimeSpan.Zero
+        };
+    }
+
     private void LogAdd(string message)
     {
         Log.Add(message);
+        OnPropertyChanged(nameof(Log));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
