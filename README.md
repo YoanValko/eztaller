@@ -1,6 +1,6 @@
 # Eztaller — One-Click App Installer & Auto-Reboot for Windows
 
-**Eztaller** is a self-contained Windows desktop program that lets you pick popular applications from a checklist, installs them silently from their official publishers, and restarts your PC when finished — no command lines, no config files, no third-party mirrors.
+**Eztaller** is a Windows desktop program that lets you pick popular applications from a checklist, installs them silently from their official publishers, and restarts your PC when finished — no command lines, no config files, no third-party mirrors.
 
 Launch → tick the apps you want → click **Install selected** → walk away. When every installer finishes (or fails gracefully), Eztaller shows a summary and schedules a reboot with a cancel-able countdown.
 
@@ -19,7 +19,7 @@ Launch → tick the apps you want → click **Install selected** → walk away. 
 | **Never abort on failure** | If one app fails, the reason is logged and the rest continue. All failures are summarized before reboot. |
 | **Auto-reboot** | A 60-second cancel-able countdown popup appears after installs; click **Cancel Reboot** to abort, otherwise the PC restarts. |
 | **Admin elevation** | Requests administrator rights at launch (required for installs and reboot) and explains why in one sentence. |
-| **Self-contained** | Bundles the .NET 8 runtime — runs on any Windows 10/11 PC without installing anything first. |
+| **Small or self-contained** | Publish a ~200 KB exe (requires .NET 8 runtime on target) or a ~147 MB self-contained exe (runs anywhere). |
 
 ---
 
@@ -62,14 +62,24 @@ Launch → tick the apps you want → click **Install selected** → walk away. 
 **Developer tools**
 - Visual Studio Code
 - Visual Studio Community 2022
+- Visual Studio Build Tools 2022
 - Eclipse Temurin JDK 21 (Java)
 - Python 3.12
 - Node.js LTS
 - Git for Windows
 - Docker Desktop
+- Microsoft .NET SDK 8
+- Microsoft .NET Desktop Runtime 8
 - Microsoft PowerToys
 - qBittorrent
 - GIMP
+- WinRAR
+- CCleaner
+- Slack
+- Microsoft Teams
+- WhatsApp Desktop
+- Telegram Desktop
+- Signal Desktop
 
 *Want more apps? Edit `apps.json` — see [Customizing the app list](#customizing-the-app-list).*
 
@@ -78,7 +88,7 @@ Launch → tick the apps you want → click **Install selected** → walk away. 
 ## 🚀 Quick start
 
 ### 1. Download
-Grab the latest release: **`Eztaller.exe`** (single self-contained executable) and keep `apps.json` in the same folder.
+Grab the latest release: **`Eztaller.exe`** and keep `apps.json` in the same folder.
 
 ### 2. Run as administrator
 Right-click `Eztaller.exe` → **Run as administrator**.
@@ -100,8 +110,7 @@ Eztaller needs elevation because it installs software and reboots the computer. 
 - **Administrator rights** (required for installation and reboot)
 - **Internet connection** (to download installers from official sources)
 - **`winget`** (Windows Package Manager) is used as a fallback for some apps; if not present, Eztaller uses direct official downloads instead
-
-No .NET installation is needed on the target PC — the executable is self-contained.
+- **.NET 8 Desktop Runtime** (only if you use the small framework-dependent build)
 
 ---
 
@@ -111,6 +120,7 @@ No .NET installation is needed on the target PC — the executable is self-conta
 - **Digital signature check:** Every downloaded executable is verified with `WinVerifyTrust` against the publisher's authenticating signature before it is ever run. If verification fails, the app is marked as failed and skipped.
 - **Silent switches:** Installers are launched with documented quiet flags so the batch runs unattended.
 - **No telemetry, no accounts, no cloud sync:** Eztaller is purely local — it never sends data anywhere except to download the installers you explicitly chose.
+- **App installers download at runtime:** Eztaller itself does not contain Chrome, Firefox, or any other app installer. Each one is downloaded fresh from the publisher when you click Install.
 
 ---
 
@@ -162,11 +172,17 @@ Add, remove, or edit entries in `apps.json` and re-launch.
 
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download) on Windows.
 
-```bash
-# Clone or copy the project folder
-cd Eztaller
+### Option 1: Small executable (~200 KB)
+Requires .NET 8 Desktop Runtime on the target PC.
 
-# Publish a single self-contained Windows executable
+```bash
+dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true
+```
+
+### Option 2: Self-contained executable (~147 MB)
+Includes the .NET 8 runtime — runs on any Windows 10/11 PC without installing anything first.
+
+```bash
 dotnet publish -c Release -r win-x64 --self-contained /p:PublishSingleFile=true
 ```
 
