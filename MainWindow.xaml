@@ -1,29 +1,94 @@
 <Window x:Class="AppInstaller.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        mc:Ignorable="d"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Title="Winget Installer - Install Apps &amp; Reboot"
-        Width="700" Height="620" MinWidth="600" MinHeight="450"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
+        mc:Ignorable="d"
+        Title="Eztaller - Install Apps &amp; Reboot"
+        Width="900" Height="700" MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#FFFAFAFA">
+    <Window.Resources>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="0,2,0,2"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+        <Style TargetType="Button" x:Key="PrimaryButton">
+            <Setter Property="Background" Value="#FF007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#FFCCCCCC"/>
+                    <Setter Property="Foreground" Value="#FF888888"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FF0066AA"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="Button" x:Key="SecondaryButton">
+            <Setter Property="Background" Value="#FFF5F5F5"/>
+            <Setter Property="Foreground" Value="#FF333333"/>
+            <Setter Property="BorderBrush" Value="#FFDDDDDD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FFEEEEEE"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="140"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="180"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Select applications to install:" FontSize="16" FontWeight="SemiBold" Margin="16,16,16,8"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="Eztaller" FontSize="24" FontWeight="Bold" Foreground="#FF007ACC"/>
+            <TextBlock Text="  •  One-click app installer &amp; auto-reboot" FontSize="14" Foreground="#FF666666" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,8">
-            <CheckBox x:Name="SelectAllCheckBox" Content="Select all" Margin="0,0,8,0" VerticalAlignment="Center"/>
-            <CheckBox Content="Select none" Margin="0,0,16,0" VerticalAlignment="Center"/>
-            <TextBlock VerticalAlignment="Center">
+        <TextBlock Grid.Row="1" Text="Select applications to install:" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,8"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+            <CheckBox x:Name="SelectAllCheckBox" Content="Select all" IsChecked="{Binding Path=AllSelected, Mode=TwoWay}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <CheckBox Content="Select none" IsChecked="{Binding Path=NoneSelected, Mode=TwoWay}" Margin="0,0,16,0" VerticalAlignment="Center"/>
+            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold">
                 <Run Text="{Binding SelectedCount, Mode=OneWay}"/>
                 <Run Text=" of "/>
                 <Run Text="{Binding Apps.Count, Mode=OneWay}"/>
@@ -31,36 +96,59 @@
             </TextBlock>
         </StackPanel>
 
-        <ListBox Grid.Row="2" ItemsSource="{Binding Apps}" BorderThickness="1" Margin="16,0,16,0"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <StackPanel Grid.Row="3" Margin="0,0,0,12">
+            <ProgressBar Value="{Binding OverallProgress}" Height="8" Maximum="100" Foreground="#FF007ACC" Background="#FFEEEEEE"/>
+            <TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="#FF666666" Margin="0,4,0,0"/>
+            <TextBlock Text="{Binding CurrentApp}" FontSize="11" Foreground="#FF999999" FontStyle="Italic" Margin="0,2,0,0"/>
+        </StackPanel>
+
+        <ListBox Grid.Row="4" ItemsSource="{Binding Apps}" BorderThickness="1" Margin="0,0,0,12"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 Background="White" BorderBrush="#FFDDDDDD">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <CheckBox Content="{Binding Entry.Name}" IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              ToolTip="{Binding Entry.Publisher}" Margin="2"/>
+                    <Border BorderThickness="0,0,0,1" BorderBrush="#FFEEEEEE" Padding="6,4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Entry.Name}" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock Text="{Binding Entry.Publisher}" FontSize="11" Foreground="#FF888888"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <TextBlock Text="{Binding StatusIcon}" FontSize="14" Foreground="{Binding StatusColor}" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding StatusText, FallbackValue='Waiting'}" FontSize="10" Foreground="{Binding StatusColor}" Margin="0,0,8,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <Button Grid.Row="3" Content="{Binding InstallButtonText}" Command="{Binding InstallCommand}"
-                IsEnabled="{Binding CanInstall, Mode=OneWay}"
-                Height="40" FontSize="14" Margin="16,12,16,0" HorizontalAlignment="Left" Width="180"/>
+        <Button Grid.Row="5" Content="{Binding InstallButtonText}" Command="{Binding InstallCommand}"
+                Style="{StaticResource PrimaryButton}"
+                Height="44" FontSize="15" Margin="0,8,0,0" HorizontalAlignment="Left" Width="200"/>
 
-        <TextBlock Grid.Row="4" Text="Progress:" FontWeight="SemiBold" Margin="16,12,16,4"/>
+        <TextBlock Grid.Row="6" Text="{Binding StatusSummary, Mode=OneWay}" Margin="0,8,0,0" TextWrapping="Wrap"
+                   Foreground="#FF007ACC" FontWeight="SemiBold"/>
 
-        <ListBox Grid.Row="5" ItemsSource="{Binding Log}" BorderThickness="1" Margin="16,0,16,0"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"
-                 Background="#FF1E1E1E" Foreground="LightGray"/>
+        <Button Grid.Row="7" Content="Close" Command="{Binding CloseCommand}"
+                Style="{StaticResource SecondaryButton}"
+                Height="36" Margin="0,12,0,0" HorizontalAlignment="Left" Width="100"/>
 
-        <TextBlock Grid.Row="6" Text="{Binding StatusSummary, Mode=OneWay}" Margin="16,8,16,16" TextWrapping="Wrap"
-                   Foreground="#FF007ACC"/>
-
-        <Popup x:Name="RebootPopup" IsOpen="False" Placement="Center" AllowsTransparency="True" PopupAnimation="Fade" Grid.RowSpan="7">
-            <Border Background="White" CornerRadius="8" BorderBrush="#FF007ACC" BorderThickness="2" Padding="24" Width="360">
+        <Popup x:Name="RebootPopup" IsOpen="False" Placement="Center" AllowsTransparency="True" PopupAnimation="Fade" Grid.RowSpan="9">
+            <Border Background="White" CornerRadius="12" BorderBrush="#FF007ACC" BorderThickness="2" Padding="32" Width="420" Height="320">
                 <StackPanel>
-                    <TextBlock Text="Rebooting soon" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="CountdownSeconds" Text="60" FontSize="24" FontWeight="Bold" Foreground="#FF007ACC" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-                    <TextBlock Text="The PC will restart automatically to complete the installations." TextWrapping="Wrap" TextAlignment="Center" Foreground="#FF555555" Margin="0,0,0,16"/>
-                    <Button Content="Cancel Reboot" Command="{Binding CancelRebootCommand}" Height="34" Width="120" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Rebooting soon" FontSize="22" FontWeight="Bold" Foreground="#FF007ACC" Margin="0,0,0,20" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="CountdownSeconds" Text="60" FontSize="48" FontWeight="Bold" Foreground="#FF007ACC" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <TextBlock Text="The PC will restart automatically to complete the installations." TextWrapping="Wrap" TextAlignment="Center" Foreground="#FF666666" Margin="0,0,0,24"/>
+                    <Button Content="Cancel Reboot" Command="{Binding CancelRebootCommand}" Style="{StaticResource PrimaryButton}"
+                            Height="40" Width="160" HorizontalAlignment="Center" FontSize="14"/>
                 </StackPanel>
             </Border>
         </Popup>
