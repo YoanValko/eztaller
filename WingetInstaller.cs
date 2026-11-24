@@ -24,8 +24,7 @@ public sealed class WingetInstaller : IInstaller
                 "--id", app.WingetId,
                 "--accept-package-agreements",
                 "--accept-source-agreements",
-                "--silent",
-                "--location", workingDirectory
+                "--silent"
             };
 
             var psi = new ProcessStartInfo
